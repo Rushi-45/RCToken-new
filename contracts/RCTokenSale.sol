@@ -31,4 +31,17 @@ contract RCTokenSale {
         tokensSold += _numberOfTokens;
         emit Sell(msg.sender, _numberOfTokens); // Trigger Sell Event
     }
+    
+    // Ending TokenSale
+    function endSale() public {
+        require(msg.sender == admin); // Require admin
+        require(
+            tokenContract.transfer(
+                admin,
+                tokenContract.balanceOf(address(this))
+            )
+        );
+        // Transfer remaining tokens to the admin
+        selfdestruct(admin); // Destroy contract
+    }
 }

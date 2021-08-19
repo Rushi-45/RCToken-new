@@ -2,8 +2,13 @@ const RCToken = artifacts.require('./RCToken.sol');
 const RCTokenSale = artifacts.require("./RCTokenSale.sol");
 
 contract('RCTokenSale', (accounts) => {    
-    let tokenSaleInstance;    
+    let tokenInstance;
+    let tokenSaleInstance;
+    let admin = accounts[0];
+    let buyer = accounts[1];
     let tokenPrice = 10000000;
+    let tokensAvailable = 750000;
+    let numberOfTokens;
 
     it('initializes the contract with the correct values', () => {
         return RCTokenSale.deployed().then((instance) => {
@@ -53,6 +58,29 @@ contract('RCTokenSale', (accounts) => {
             return tokenSaleInstance.buyTokens(800000, { from: buyer, value: numberOfTokens * tokenPrice })
         }).then(assert.fail).catch((error) => {
             assert(error.message.indexOf('revert') >= 0, 'cannot purchase more tokens than available');
+        });
+    });
+    it('ends token sale', () => {
+        return RCToken.deployed().then((instance) => {
+            // Grab token instance first
+            tokenInstance = instance;
+            return RCTokenSale.deployed();
+        }).then((instance) => {
+            // Then grab token sale instance
+            tokenSaleInstance = instance;
+            // Try to end sale from account other than the admin
+            return tokenSaleInstance.endSale({ from: buyer });
+        }).then(assert.fail).catch((error) => {
+            assert(error.message.indexOf('revert' >= 0, 'must be admin to end sale'));
+            // End sale as admin
+            return tokenSaleInstance.endSale({ from: admin });
+        }).then(() => {
+            return tokenInstance.balanceOf(admin);
+        }).then(async (balance) => {
+            assert.equal(balance.toNumber(), 999990, 'returns all unsold dapp tokens to admin');
+            // Check that the contract has no balance
+            balance = await web3.eth.getBalance(tokenSaleInstance.address)
+            assert.equal(balance, 0);
         });
     });
 })
